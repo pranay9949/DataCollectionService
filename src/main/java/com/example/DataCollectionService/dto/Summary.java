@@ -9,7 +9,7 @@ import lombok.Generated;
 @Data
 public class Summary {
 
-
+   private Integer appId;
     private PlanRequest planRequest;
     private IncomeRequest incomeRequest;
     private EducationRequest educationRequest;

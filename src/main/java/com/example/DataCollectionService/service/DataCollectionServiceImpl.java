@@ -16,10 +16,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,9 +46,9 @@ public class DataCollectionServiceImpl implements DataCollectionService{
             if (registeredSsnResponse == null) {
                 throw new AppIdErrorException("No response from Registration Service.");
             }
-            if(dcCaseRepo.existsByAppId(id)){
-                throw new AppIdErrorException("Entered AppId has Already generated with Case Number");
-            }
+//            if(dcCaseRepo.existsByAppId(id)){
+//                throw new AppIdErrorException("Entered AppId has Already generated with Case Number");
+//            }
            DcCase dcCase = new DcCase();
             dcCase.setAppId(id);
             dcCase.setCaseNumber(generateUnique6DigitId());
@@ -71,9 +68,19 @@ public class DataCollectionServiceImpl implements DataCollectionService{
     }
 
     @Override
-    public Map<Long, String> getPlanNames() {
+    public Map<Long,String> getPlanNames() {
         Map<Long,String> list = categoryClient.getAllCategories().getBody();
-        return list;
+        Set<Long> s =list.keySet();
+        Map<Long,String> planNames = new HashMap<>();
+        for(Long l : s){
+            List<PlanResponse>  p = categoryClient.getByCatId(l).getBody();
+            for(PlanResponse p1 : p){
+                planNames.put(p1.getPlanId(),p1.getPlanName());
+            }
+
+
+        }
+        return planNames;
     }
 
 
@@ -83,15 +90,23 @@ public class DataCollectionServiceImpl implements DataCollectionService{
         Plan plan = new Plan();
         Map<Long,String> plans = getPlanNames();
         if(planRepo.existsByCaseNumber(request.getCaseNumber())){
-            throw new DuplicateCaseNumberException("Entered  Case Number is already registered with plan Data");
+            throw new DuplicateCaseNumberException("Entered  case Number is already registered with plan Data");
         }
         Long planId = plans.entrySet().stream()
-                .filter(p -> p.getValue().equalsIgnoreCase(request.getPlanName()))
-                .map(Map.Entry::getKey)
-                .findFirst()
+                .filter(p -> p.getValue().equalsIgnoreCase(request.getPlanName())).
+                map(i->i.getKey()).findFirst()
                 .orElseThrow(() -> new NoPlanFoundException("Plan not found"));
        plan.setPlanName(request.getPlanName());
-       DcCase dcCase = dcCaseRepo.findById(request.getCaseNumber()).orElseThrow(()->new CaseNumberNotFoundException("Provided Case Number does Not Exist"));
+       DcCase dcCase = dcCaseRepo.findById(request.getCaseNumber()).orElseThrow(()->new NoPlanFoundException("No plan Found"));
+       List<DcCase> dcCaseList = dcCaseRepo.findByAppId(dcCase.getAppId());
+        for(DcCase li : dcCaseList){
+          if(li.getPlanId()!=null && li.getPlanId().equals(planId)){
+              throw  new DuplicateCaseNumberException("Plan is Already registered with your application id details");
+          }
+        }
+//       if(dcCase.getPlanId()!=null ){
+//             throw  new DuplicateCaseNumberException("User with this case number already registered with Plan name ,Try with different Case Number");
+//         }
 
        dcCase.setPlanId(planId);
        dcCaseRepo.save(dcCase);
@@ -154,8 +169,10 @@ public class DataCollectionServiceImpl implements DataCollectionService{
     }
 
     @Override
-    public Summary getSavedData(Long caseNumber) {
+    public Summary getSavedData(Long caseNumber) throws CaseNumberNotFoundException {
         Summary summary = new Summary();
+        DcCase dcCase = dcCaseRepo.findById(caseNumber).orElseThrow(()->new CaseNumberNotFoundException("Case Number Not Found"));
+        summary.setAppId(dcCase.getAppId());
         Plan plan = planRepo.findByCaseNumber(caseNumber);
         PlanRequest planrequest = new PlanRequest();
         BeanUtils.copyProperties(plan,planrequest);

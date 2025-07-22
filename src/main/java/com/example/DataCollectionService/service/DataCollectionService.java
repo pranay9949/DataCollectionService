@@ -24,6 +24,6 @@ public interface DataCollectionService {
 
     public Long saveChildrenData(ChildrenRequestWrapper requestWrapper) throws CaseNumberNotFoundException, DuplicateCaseNumberException;
 
-    public Summary getSavedData(Long caseNumber);
+    public Summary getSavedData(Long caseNumber) throws CaseNumberNotFoundException;
 
 }

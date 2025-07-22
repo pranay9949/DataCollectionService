@@ -2,6 +2,7 @@ package com.example.DataCollectionService.controller;
 
 
 import com.example.DataCollectionService.dto.Summary;
+import com.example.DataCollectionService.exception.CaseNumberNotFoundException;
 import com.example.DataCollectionService.service.DataCollectionService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
@@ -20,7 +21,7 @@ public class SummaryController {
     }
 
     @GetMapping("/get/{caseNumber}")
-    public ResponseEntity<Summary> getAllSavedData(@PathVariable Long caseNumber){
+    public ResponseEntity<Summary> getAllSavedData(@PathVariable Long caseNumber) throws CaseNumberNotFoundException {
         Summary summary = dataCollectionService.getSavedData(caseNumber);
         return new ResponseEntity<>(summary, HttpStatus.OK);
     }
